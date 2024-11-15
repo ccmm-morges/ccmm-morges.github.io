@@ -95,7 +95,7 @@
         <!--div class="title">Projet achat</div-->
         <div class="date" id="currentDate"></div>
         <div class="metric">
-            <div id="montantPromis">0000 CHF</div> <!-- Exemple de montant promis -->
+            <!--div id="montantPromis">0000 CHF</div--> <!-- Exemple de montant promis -->
             <div id="montantRecu">0000 CHF</div> <!-- Montant reçu -->
             <div id="objectif">Objectif : 740'000 CHF (+frais ~60k)</div>
         </div>
@@ -108,8 +108,8 @@
     <div id="qrcode"></div>
 
     <script>
-        const montantPromis = 157600; // Exemple de montant promis
-        const montantRecu = 106400; // Montant reçu
+        //const montantPromis = 157600; // Exemple de montant promis
+        const montantRecu = 116010; // Montant reçu
         const montantTotal = 740000;
         
 		// Fonction pour formater les montants en format suisse
@@ -119,8 +119,8 @@
 		
         const pourcentage = (montantPromis / montantTotal) * 100;
 
-        document.getElementById('montantPromis').textContent = `Promis : ${formatMontantSuisse(montantPromis)} CHF`;
-        document.getElementById('montantRecu').textContent = `dont reçus : ${formatMontantSuisse(montantRecu)} CHF`;
+        //document.getElementById('montantPromis').textContent = `Promis : ${formatMontantSuisse(montantPromis)} CHF`;
+        document.getElementById('montantRecu').textContent = `Somme récoltée : ${formatMontantSuisse(montantRecu)} CHF`;
 
 
         const progressFill = document.getElementById('progressFill');
