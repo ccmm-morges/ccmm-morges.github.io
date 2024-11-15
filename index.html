@@ -117,7 +117,7 @@
             return montant.toLocaleString('fr-CH').replace(/\s/g, "'");
         }
 		
-        const pourcentage = (montantPromis / montantTotal) * 100;
+        const pourcentage = (montantRecu / montantTotal) * 100;
 
         //document.getElementById('montantPromis').textContent = `Promis : ${formatMontantSuisse(montantPromis)} CHF`;
         document.getElementById('montantRecu').textContent = `Somme récoltée : ${formatMontantSuisse(montantRecu)} CHF`;
