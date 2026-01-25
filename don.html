@@ -33,7 +33,7 @@
     <h2>Ma Commande</h2>
 
     <div class="product" onclick="toggleProduct(this, 1.00)">
-        <div class="prod-name">Don Test 1CHF</div>
+        <div class="prod-name">Don Test A</div>
         <div class="prod-price">CHF 1.00</div>
     </div>
     
@@ -70,7 +70,7 @@
             document.getElementById('total-display').innerText = "Total: CHF " + total.toFixed(2);
         }
         // --- 2. Déclenchement du paiement (AVEC DEBUG) ---
-        function triggerSumUp_debug() {
+        function triggerSumUp() {
             // DEBUG : Étape 1
             alert("🔍 Étape 1 : Clic détecté. Vérification du montant...");
 
@@ -110,7 +110,7 @@
             window.location.href = sumupUrl;
         }
         
-        function triggerSumUp() {
+        function triggerSumUp_intent() {
             // DEBUG : Étape 1
             // alert("🔍 Clic détecté."); // Vous pouvez désactiver cette alerte si elle vous agace
 
