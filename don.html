@@ -3,21 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ma Commande SumUp</title>
+    <title>Commande SumUp (Suisse)</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; text-align: center; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; }
         
         /* Styles des produits */
-        .product { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-        .product.selected { background-color: #e0f7fa; border-color: #006064; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .product { background: white; border: 1px solid #ddd; padding: 20px; margin: 15px 0; border-radius: 12px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .product.selected { background-color: #e0f7fa; border-color: #006064; box-shadow: 0 4px 8px rgba(0,96,100,0.2); transform: scale(1.02); }
         
-        /* Styles du bouton et total */
-        #total-display { font-size: 24px; font-weight: bold; margin: 20px 0; }
-        #pay-btn { background-color: #00c4b4; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 5px; cursor: pointer; width: 100%; }
-        #pay-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        /* Texte produits */
+        .prod-name { font-size: 1.2em; font-weight: bold; }
+        .prod-price { font-size: 1.1em; color: #555; }
 
-        /* Styles des messages de retour (Succès/Erreur) */
-        #status-message { display: none; padding: 15px; border-radius: 5px; margin-bottom: 20px; font-weight: bold; }
+        /* Styles du bouton et total */
+        #total-display { font-size: 28px; font-weight: bold; margin: 30px 0; color: #333; }
+        #pay-btn { background-color: #00c4b4; color: white; border: none; padding: 18px 30px; font-size: 20px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #pay-btn:active { transform: scale(0.98); }
+
+        /* Styles des messages de retour */
+        #status-message { display: none; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; }
         .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     </style>
@@ -26,19 +30,24 @@
 
     <div id="status-message"></div>
 
-    <h2>Nouvelle Commande</h2>
+    <h2>Ma Commande</h2>
 
     <div class="product" onclick="toggleProduct(this, 10.00)">
-        <strong>Produit A</strong><br>10,00 €
+        <div class="prod-name">Produit A</div>
+        <div class="prod-price">CHF 10.00</div>
     </div>
-    <div class="product" onclick="toggleProduct(this, 15.50)">
-        <strong>Produit B</strong><br>15,50 €
+    
+    <div class="product" onclick="toggleProduct(this, 25.50)">
+        <div class="prod-name">Produit B</div>
+        <div class="prod-price">CHF 25.50</div>
     </div>
+    
     <div class="product" onclick="toggleProduct(this, 5.00)">
-        <strong>Produit C</strong><br>5,00 €
+        <div class="prod-name">Produit C</div>
+        <div class="prod-price">CHF 5.00</div>
     </div>
 
-    <div id="total-display">Total: 0,00 €</div>
+    <div id="total-display">Total: CHF 0.00</div>
 
     <button id="pay-btn" onclick="triggerSumUp()">Payer maintenant</button>
 
@@ -54,65 +63,73 @@
                 element.classList.add('selected');
                 total += price;
             }
-            // Arrondi pour éviter les bugs de décimales (ex: 15.00000001)
+            // Arrondi mathématique
             total = Math.round(total * 100) / 100;
-            document.getElementById('total-display').innerText = "Total: " + total.toFixed(2) + " €";
+            // Affichage format suisse
+            document.getElementById('total-display').innerText = "Total: CHF " + total.toFixed(2);
         }
 
-        // --- 2. Déclenchement du paiement ---
+        // --- 2. Déclenchement du paiement (AVEC DEBUG) ---
         function triggerSumUp() {
+            // DEBUG : Étape 1
+            alert("🔍 Étape 1 : Clic détecté. Vérification du montant...");
+
             if (total <= 0) {
-                alert("Veuillez sélectionner au moins un produit.");
+                alert("⚠️ Erreur : Le total est à 0. Sélectionnez un produit.");
                 return;
             }
 
-            // VOTRE CLE ICI (Exemple: 1234abcd-...)
+            // DEBUG : Étape 2
+            alert("🔍 Étape 2 : Montant OK (CHF " + total + "). Préparation du lien...");
+
+            // ---------------------------------------------------------
+            // 👇 COLLEZ VOTRE CLÉ AFFILIATE KEY ICI (entre les guillemets) 👇
             const affiliateKey = "sup_pk_r2VL8MEzolBAvmyaFssc0ijwopCkEpm1K"; 
-            
-            const currency = "EUR";
+            // ---------------------------------------------------------
+
+            if (affiliateKey === "VOTRE_AFFILIATE_KEY_ICI") {
+                alert("⚠️ ATTENTION : Vous n'avez pas remplacé la Clé d'Affiliation dans le code !");
+                return;
+            }
+
+            const currency = "CHF"; // Devise Suisse
             const amount = total.toFixed(2);
-            const title = "Commande Web - " + new Date().toLocaleTimeString();
+            const title = "Commande Kiosque";
             
-            // IMPORTANT : URL actuelle pour revenir ici
-            // On nettoie l'URL pour ne pas empiler les paramètres
+            // URL de retour (Callback)
             const currentUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
             const callbackUrl = encodeURIComponent(currentUrl);
 
-            // Construction du lien
+            // Construction de l'URL
             const sumupUrl = `sumupmerchant://pay?client-id=${affiliateKey}&total=${amount}&currency=${currency}&title=${title}&callback=${callbackUrl}`;
 
+            // DEBUG : Étape 3
+            alert("🔍 Étape 3 : Lancement de SumUp !\nURL générée : " + sumupUrl);
+
+            // Redirection
             window.location.href = sumupUrl;
         }
 
         // --- 3. Gestion du retour (Callback) ---
-        // Cette fonction s'exécute automatiquement au chargement de la page
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
-            const status = urlParams.get('smp-status'); // Récupère le statut envoyé par SumUp
+            const status = urlParams.get('smp-status');
 
             const msgDiv = document.getElementById('status-message');
 
             if (status) {
-                // On affiche le message
                 msgDiv.style.display = "block";
 
                 if (status === 'success') {
-                    // PAIEMENT RÉUSSI
-                    const txCode = urlParams.get('smp-tx-code'); // Code de transaction unique
+                    const txCode = urlParams.get('smp-tx-code');
                     msgDiv.className = "success";
-                    msgDiv.innerHTML = `✅ Paiement réussi ! <br><small>Code Transaction : ${txCode}</small>`;
-                    
-                    // Optionnel : On peut vider le panier ici si on veut
-                    // resetCart(); 
+                    msgDiv.innerHTML = `✅ Paiement Validé ! <br><small>Transaction : ${txCode}</small>`;
                 } else {
-                    // ÉCHEC ou ANNULATION
-                    const errorMsg = urlParams.get('smp-message') || "Paiement annulé ou échoué.";
+                    const errorMsg = urlParams.get('smp-message') || "Annulé ou Échoué";
                     msgDiv.className = "error";
                     msgDiv.innerHTML = `❌ Erreur : ${errorMsg}`;
                 }
-
-                // Nettoyage de l'URL pour que le message disparaisse si on rafraîchit la page
-                // Cela enlève "?smp-status=..." de la barre d'adresse visuellement
+                // Nettoyage visuel de l'URL
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         };
