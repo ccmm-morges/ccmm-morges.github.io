@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<script>
+const montantRecu = 409830; // Montant reçu
+</script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progression de la Récolte</title>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            /* Fond sombre profond avec un léger dégradé pour éviter le noir plat */
+            background-color: #070a0f;
+            background-image: radial-gradient(circle at center, #111a24 0%, #040609 100%);
+            color: #fff;
+            font-family: 'Montserrat', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* Évite les barres de défilement sur l'écran */
+        }
+
+        /* Ajout d'une bordure décorative discrète */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 20px; bottom: 20px; left: 20px; right: 20px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 15px;
+            pointer-events: none;
+        }
+
+        .container {
+            width: 85%;
+            max-width: 1400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .date {
+            font-family: 'Amiri', serif;
+            font-size: 3.5vw;
+            color: #D4AF37; /* Or classique */
+            margin-bottom: 5vh;
+            text-transform: capitalize;
+            text-shadow: 0 2px 10px rgba(212, 175, 55, 0.3);
+        }
+
+        .metric {
+            margin-bottom: 6vh;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+        }
+
+        .label {
+            font-family: 'Amiri', serif;
+            font-size: 2.5vw;
+            color: #E0E0E0;
+            margin-bottom: 10px;
+        }
+
+        #montantRecu {
+            font-size: 7vw;
+            font-weight: 800;
+            color: #D4AF37;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+            letter-spacing: 2px;
+        }
+
+        #objectif {
+            font-size: 2vw;
+            color: #8892b0;
+            margin-top: 15px;
+            font-weight: 400;
+        }
+
+        .highlight-frais {
+            font-size: 1.5vw;
+            color: #596585;
+        }
+
+        #progressBar {
+            width: 100%;
+            height: 7vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid #D4AF37;
+            border-radius: 50px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(212, 175, 55, 0.15);
+        }
+
+        #progressFill {
+            height: 100%;
+            width: 0%; /* Initialisé à 0 pour l'animation */
+            /* Dégradé doré oriental */
+            background: linear-gradient(90deg, #8A5A19 0%, #D4AF37 50%, #F3E5AB 100%);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+            transition: width 2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end; /* Texte collé à l'avancement */
+            padding-right: 20px;
+            box-sizing: border-box;
+        }
+
+        #progressText {
+            font-size: 2.5vw;
+            font-weight: 700;
+            color: #000; /* Noir pour contraster avec l'or */
+            text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+        }
+
+        #qrcode {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: #fff;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            border: 2px solid #D4AF37;
+        }
+
+        #qrcode img {
+            width: 120px; /* Légèrement réduit pour être discret mais lisible */
+            height: 120px;
+            display: block;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="date" id="currentDate"></div>
+        
+        <div class="metric">
+            <div class="label">Al Hamdulillah, nous avons récolté :</div>
+            <div id="montantRecu">0 CHF</div>
+            <div id="objectif">Objectif : 740'000 CHF <span class="highlight-frais">(+ frais ~60k)</span></div>
+        </div>
+
+        <div id="progressBar">
+            <div id="progressFill">
+                <span id="progressText">0%</span>
+            </div>
+        </div>
+    </div>
+    <div id="qrcode"></div>
+
+    <script>
+        const montantTotal = 740000;
+        
+        // Fonction pour formater les montants en format suisse
+        function formatMontantSuisse(montant) {
+            return montant.toLocaleString('fr-CH').replace(/\s/g, "'");
+        }
+        
+        const pourcentage = (montantRecu / montantTotal) * 100;
+
+        // Insertion du montant avec la devise
+        document.getElementById('montantRecu').textContent = `${formatMontantSuisse(montantRecu)} CHF`;
+
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        
+        // Calcul pour éviter que le texte soit écrasé si le pourcentage est trop bas (< 5%)
+        const pourcentageAffichage = pourcentage > 100 ? 100 : pourcentage;
+        progressText.textContent = `${pourcentageAffichage.toFixed(1)}%`;
+
+        // Animation douce de la barre de progression au chargement
+        setTimeout(() => {
+            progressFill.style.width = `${pourcentageAffichage}%`;
+            // Si le % est très petit, on force le texte à s'afficher à l'extérieur ou on le centre
+            if (pourcentage < 8) {
+                progressFill.style.justifyContent = 'flex-start';
+                progressFill.style.paddingLeft = '20px';
+            }
+        }, 300);
+
+        // Affichage de la date du jour (ex: Lundi 16 Mars 2026)
+        const currentDate = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').textContent = currentDate.toLocaleDateString('fr-FR', options);
+        
+        // Fonction pour récupérer la valeur d'un paramètre dans l'URL
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.has(param);
+        }
+
+        // Génération du QR code uniquement si le paramètre 'displayQrCode' est présent dans l'URL
+        if (getQueryParam('displayQrCode')) {
+            const qr = qrcode(0, 'L');
+            qr.addData('https://docs.google.com/forms/d/e/1FAIpQLSc7BlKx-n79_-pOm46anvRlnRTNFY37br7CZTgdKmvE-VHM3Q/viewform');
+            qr.make();
+            document.getElementById('qrcode').innerHTML = qr.createImgTag(4);
+        }
+    </script>
+</body>
+</html>
