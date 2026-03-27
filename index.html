@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
 <script>
-const montantRecu = 443560; // Montant reçu
+const montantRecu = 443560; // Montant reçu actuel
 </script>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Progression de la Récolte</title>
+    <title>Progression de la Récolte - Objectif 70%</title>
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
     
     <style>
@@ -31,7 +31,7 @@ const montantRecu = 443560; // Montant reçu
             content: '';
             position: absolute;
             top: 20px; bottom: 20px; left: 20px; right: 20px;
-            border: 1px solid rgba(212, 175, 55, 0.2);
+            border: 1px solid rgba(212, 175, 55, 0.15);
             border-radius: 15px;
             pointer-events: none;
         }
@@ -48,15 +48,15 @@ const montantRecu = 443560; // Montant reçu
 
         .date {
             font-family: 'Amiri', serif;
-            font-size: 3.5vw;
+            font-size: 3vw;
             color: #D4AF37; /* Or classique */
-            margin-bottom: 5vh;
+            margin-bottom: 4vh;
             text-transform: capitalize;
             text-shadow: 0 2px 10px rgba(212, 175, 55, 0.3);
         }
 
         .metric {
-            margin-bottom: 6vh;
+            margin-bottom: 5vh;
             text-align: center;
             background: rgba(255, 255, 255, 0.02);
             padding: 40px;
@@ -68,7 +68,7 @@ const montantRecu = 443560; // Montant reçu
 
         .label {
             font-family: 'Amiri', serif;
-            font-size: 2.5vw;
+            font-size: 2.2vw;
             color: #E0E0E0;
             margin-bottom: 10px;
         }
@@ -82,26 +82,27 @@ const montantRecu = 443560; // Montant reçu
         }
 
         #objectif {
-            font-size: 2vw;
+            font-size: 1.8vw;
             color: #8892b0;
             margin-top: 15px;
             font-weight: 400;
         }
 
         .highlight-frais {
-            font-size: 1.5vw;
+            font-size: 1.4vw;
             color: #596585;
         }
 
         #progressBar {
             width: 100%;
             height: 7vh;
-            background-color: rgba(255, 255, 255, 0.05); /* Légèrement éclairci pour contraster avec le fond noir */
+            background-color: rgba(255, 255, 255, 0.05);
             border: 2px solid #D4AF37;
             border-radius: 50px;
             overflow: hidden;
             position: relative;
             box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(212, 175, 55, 0.15);
+            margin-bottom: 2vh;
         }
 
         #progressFill {
@@ -127,114 +128,6 @@ const montantRecu = 443560; // Montant reçu
             text-shadow: 0 1px 2px rgba(255,255,255,0.5);
         }
 
-        /* Styles pour les repères d'objectifs intermédiaires */
+        /* Styles pour les repères */
         .marker {
             position: absolute;
-            top: 0;
-            bottom: 0;
-            border-left: 2px dashed rgba(255, 255, 255, 0.6);
-            display: flex;
-            align-items: center;
-            padding-left: 8px;
-            z-index: 5; /* Au-dessus du remplissage */
-            pointer-events: none;
-        }
-
-        .marker span {
-            font-size: 1.5vw;
-            color: #FFF;
-            font-weight: 700;
-            text-shadow: 1px 1px 4px #000, -1px -1px 4px #000; /* Contraste maximal */
-        }
-
-        #qrcode {
-            position: fixed;
-            bottom: 30px;
-            left: 30px;
-            background: #fff;
-            padding: 10px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            border: 2px solid #D4AF37;
-        }
-
-        #qrcode img {
-            width: 120px; /* Légèrement réduit pour être discret mais lisible */
-            height: 120px;
-            display: block;
-        }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-</head>
-<body>
-    <div class="container">
-        <div class="date" id="currentDate"></div>
-        
-        <div class="metric">
-            <div class="label">Al Hamdulillah, nous avons récolté :</div>
-            <div id="montantRecu">0 CHF</div>
-            <div id="objectif">Objectif : 740'000 CHF <span class="highlight-frais">(+ frais ~60k)</span></div>
-        </div>
-
-        <div id="progressBar">
-            <div id="progressFill">
-                <span id="progressText">0%</span>
-            </div>
-            <div class="marker" style="left: 70%;"><span>70%</span></div>
-            <div class="marker" style="left: 80%;"><span>80%</span></div>
-            <div class="marker" style="left: 90%;"><span>90%</span></div>
-        </div>
-    </div>
-    <div id="qrcode"></div>
-
-    <script>
-        const montantTotal = 740000;
-        
-        // Fonction pour formater les montants en format suisse
-        function formatMontantSuisse(montant) {
-            return montant.toLocaleString('fr-CH').replace(/\s/g, "'");
-        }
-        
-        const pourcentage = (montantRecu / montantTotal) * 100;
-
-        // Insertion du montant avec la devise
-        document.getElementById('montantRecu').textContent = `${formatMontantSuisse(montantRecu)} CHF`;
-
-        const progressFill = document.getElementById('progressFill');
-        const progressText = document.getElementById('progressText');
-        
-        // Calcul pour éviter que le texte soit écrasé si le pourcentage est trop bas (< 5%)
-        const pourcentageAffichage = pourcentage > 100 ? 100 : pourcentage;
-        progressText.textContent = `${pourcentageAffichage.toFixed(1)}%`;
-
-        // Animation douce de la barre de progression au chargement
-        setTimeout(() => {
-            progressFill.style.width = `${pourcentageAffichage}%`;
-            // Si le % est très petit, on force le texte à s'afficher à l'extérieur ou on le centre
-            if (pourcentage < 8) {
-                progressFill.style.justifyContent = 'flex-start';
-                progressFill.style.paddingLeft = '20px';
-            }
-        }, 300);
-
-        // Affichage de la date du jour
-        const currentDate = new Date();
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('currentDate').textContent = currentDate.toLocaleDateString('fr-FR', options);
-        
-        // Fonction pour récupérer la valeur d'un paramètre dans l'URL
-        function getQueryParam(param) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.has(param);
-        }
-
-        // Génération du QR code uniquement si le paramètre 'displayQrCode' est présent dans l'URL
-        if (getQueryParam('displayQrCode')) {
-            const qr = qrcode(0, 'L');
-            qr.addData('https://docs.google.com/forms/d/e/1FAIpQLSc7BlKx-n79_-pOm46anvRlnRTNFY37br7CZTgdKmvE-VHM3Q/viewform');
-            qr.make();
-            document.getElementById('qrcode').innerHTML = qr.createImgTag(4);
-        }
-    </script>
-</body>
-</html>
