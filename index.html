@@ -131,3 +131,188 @@ const montantRecu = 443560; // Montant reçu actuel
         /* Styles pour les repères */
         .marker {
             position: absolute;
+            top: 0;
+            bottom: 0;
+            border-left: 1px dashed rgba(255, 255, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            padding-left: 8px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .marker-percent {
+            font-size: 1.2vw;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 700;
+            text-shadow: 1px 1px 3px #000;
+        }
+
+        /* --- STYLE SPÉCIFIQUE POUR L'OBJECTIF CIBLE (70%) --- */
+        #marker70 {
+            left: 70%;
+            border-left: 3px solid #D4AF37; /* Ligne pleine dorée */
+            z-index: 3; /* Au-dessus des autres markers */
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.7); /* Glow doré */
+            animation: target-pulse 2s infinite; /* Animation de pulsation */
+        }
+
+        #marker70 .marker-percent {
+            color: #FFF;
+            font-size: 1.4vw;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 1), 1px 1px 2px #000;
+        }
+
+        .marker-label {
+            font-size: 0.9vw;
+            color: #D4AF37;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 2px;
+            font-weight: 700;
+            text-shadow: 1px 1px 3px #000;
+        }
+
+        /* --- BLOC MOTIVATION SOUS LA BARRE --- */
+        #motivationTarget {
+            font-size: 2vw;
+            color: #E0E0E0;
+            background: rgba(212, 175, 55, 0.08);
+            padding: 15px 40px;
+            border-radius: 30px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-weight: 500;
+        }
+
+        #motivationTarget strong {
+            color: #F3E5AB; /* Jaune très clair */
+            font-size: 2.2vw;
+            font-weight: 800;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+
+        /* Keyframes pour l'animation de pulsation de la cible */
+        @keyframes target-pulse {
+            0% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.6); border-left-color: #8A5A19; }
+            50% { box-shadow: 0 0 25px rgba(212, 175, 55, 1); border-left-color: #F3E5AB; }
+            100% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.6); border-left-color: #8A5A19; }
+        }
+
+        #qrcode {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: #fff;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            border: 2px solid #D4AF37;
+        }
+
+        #qrcode img {
+            width: 100px;
+            height: 100px;
+            display: block;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="date" id="currentDate"></div>
+        
+        <div class="metric">
+            <div class="label">Al Hamdulillah, nous avons récolté :</div>
+            <div id="montantRecu">0 CHF</div>
+            <div id="objectif">Objectif Final : 740'000 CHF <span class="highlight-frais">(+ frais ~60k)</span></div>
+        </div>
+
+        <div id="progressBar">
+            <div id="progressFill">
+                <span id="progressText">0%</span>
+            </div>
+            <div id="marker70" class="marker">
+                <span class="marker-percent">70%</span>
+                <span class="marker-label">Prochain Objectif !</span>
+            </div>
+            
+            <div class="marker" style="left: 80%;"><span class="marker-percent">80%</span></div>
+            <div class="marker" style="left: 90%;"><span class="marker-percent">90%</span></div>
+        </div>
+
+        <div id="motivationTarget">
+            🚀 Encore <strong id="manquantTarget">-- CHF</strong> pour atteindre le palier des 70% ! En avant !
+        </div>
+
+    </div>
+    <div id="qrcode"></div>
+
+    <script>
+        const montantTotal = 740000;
+        const palierCible70 = montantTotal * 0.70; // 518'000 CHF
+        
+        // Fonction pour formater les montants en format suisse
+        function formatMontantSuisse(montant) {
+            return montant.toLocaleString('fr-CH').replace(/\s/g, "'");
+        }
+        
+        const pourcentage = (montantRecu / montantTotal) * 100;
+
+        // Insertion du montant avec la devise
+        document.getElementById('montantRecu').textContent = `${formatMontantSuisse(montantRecu)} CHF`;
+
+        // Calcul du montant manquant pour le palier de 70%
+        const panelMotivation = document.getElementById('motivationTarget');
+        if (montantRecu < palierCible70) {
+            const manquant70 = palierCible70 - montantRecu;
+            document.getElementById('manquantTarget').textContent = `${formatMontantSuisse(Math.round(manquant70))} CHF`;
+        } else {
+            // Si 70% est atteint, on change le texte pour viser les 80% ou on félicite
+            panelMotivation.innerHTML = "🎉 <strong>Objectif 70% Atteint !</strong> Al Hamdulillah. Continuons l'effort !";
+            panelMotivation.style.background = "rgba(85, 224, 111, 0.1)"; // Vert léger
+            panelMotivation.style.border = "1px solid rgba(85, 224, 111, 0.4)";
+            document.getElementById('marker70').style.animation = "none"; // Stop animation
+            document.getElementById('marker70').style.borderLeftColor = "#55e06f"; // Vert
+        }
+
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        
+        const pourcentageAffichage = pourcentage > 100 ? 100 : pourcentage;
+        progressText.textContent = `${pourcentageAffichage.toFixed(1)}%`;
+
+        // Animation douce de la barre de progression
+        setTimeout(() => {
+            progressFill.style.width = `${pourcentageAffichage}%`;
+            if (pourcentage < 8) {
+                progressFill.style.justifyContent = 'flex-start';
+                progressFill.style.paddingLeft = '20px';
+            }
+        }, 300);
+
+        // Affichage de la date du jour
+        const currentDate = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').textContent = currentDate.toLocaleDateString('fr-FR', options);
+        
+        // QR code logic
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.has(param);
+        }
+
+        if (getQueryParam('displayQrCode')) {
+            const qr = qrcode(0, 'L');
+            qr.addData('https://docs.google.com/forms/d/e/1FAIpQLSc7BlKx-n79_-pOm46anvRlnRTNFY37br7CZTgdKmvE-VHM3Q/viewform');
+            qr.make();
+            document.getElementById('qrcode').innerHTML = qr.createImgTag(4);
+        }
+    </script>
+</body>
+</html>
