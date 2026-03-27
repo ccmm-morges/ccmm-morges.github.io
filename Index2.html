@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <script>
-const montantRecu = 409830; // Montant reçu
+const montantRecu = 443560; // Montant reçu
 </script>
 <head>
     <meta charset="UTF-8">
@@ -15,9 +15,8 @@ const montantRecu = 409830; // Montant reçu
             padding: 0;
             height: 100%;
             width: 100%;
-            /* Fond sombre profond avec un léger dégradé pour éviter le noir plat */
-            background-color: #070a0f;
-            background-image: radial-gradient(circle at center, #111a24 0%, #040609 100%);
+            /* Fond noir pur */
+            background: #000000;
             color: #fff;
             font-family: 'Montserrat', sans-serif;
             display: flex;
@@ -97,7 +96,7 @@ const montantRecu = 409830; // Montant reçu
         #progressBar {
             width: 100%;
             height: 7vh;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(255, 255, 255, 0.05); /* Légèrement éclairci pour contraster avec le fond noir */
             border: 2px solid #D4AF37;
             border-radius: 50px;
             overflow: hidden;
@@ -117,6 +116,8 @@ const montantRecu = 409830; // Montant reçu
             justify-content: flex-end; /* Texte collé à l'avancement */
             padding-right: 20px;
             box-sizing: border-box;
+            position: relative;
+            z-index: 1;
         }
 
         #progressText {
@@ -124,6 +125,26 @@ const montantRecu = 409830; // Montant reçu
             font-weight: 700;
             color: #000; /* Noir pour contraster avec l'or */
             text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+        }
+
+        /* Styles pour les repères d'objectifs intermédiaires */
+        .marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            border-left: 2px dashed rgba(255, 255, 255, 0.6);
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+            z-index: 5; /* Au-dessus du remplissage */
+            pointer-events: none;
+        }
+
+        .marker span {
+            font-size: 1.5vw;
+            color: #FFF;
+            font-weight: 700;
+            text-shadow: 1px 1px 4px #000, -1px -1px 4px #000; /* Contraste maximal */
         }
 
         #qrcode {
@@ -159,6 +180,9 @@ const montantRecu = 409830; // Montant reçu
             <div id="progressFill">
                 <span id="progressText">0%</span>
             </div>
+            <div class="marker" style="left: 70%;"><span>70%</span></div>
+            <div class="marker" style="left: 80%;"><span>80%</span></div>
+            <div class="marker" style="left: 90%;"><span>90%</span></div>
         </div>
     </div>
     <div id="qrcode"></div>
@@ -193,7 +217,7 @@ const montantRecu = 409830; // Montant reçu
             }
         }, 300);
 
-        // Affichage de la date du jour (ex: Lundi 16 Mars 2026)
+        // Affichage de la date du jour
         const currentDate = new Date();
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('currentDate').textContent = currentDate.toLocaleDateString('fr-FR', options);
