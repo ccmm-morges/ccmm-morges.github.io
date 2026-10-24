@@ -7,315 +7,597 @@ const montantRecu = 491475; // Montant reçu actuel
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Progression de la Récolte - Objectif 70%</title>
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Montserrat:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+    <script>
+    /* ================= RÉGLAGES ÉCRAN =================
+       ROTATION_HEURES : la disposition change toutes les X heures
+                         (4 dispositions différentes, cycle complet = 4 × X heures)
+       VEILLE          : écran quasi noir la nuit, ex. { debut: 23, fin: 4 }
+                         (null = désactivé)
+       RECHARGE_MIN    : recharge la page toutes les X minutes pour afficher
+                         le nouveau montant après une mise à jour sur GitHub
+       Tests : ?layout=0..3 force une disposition, ?demo fait défiler les 4,
+               ?displayQrCode affiche le QR code (comme avant)
+    ==================================================== */
+    const ROTATION_HEURES = 2;
+    const VEILLE = null;
+    const RECHARGE_MIN = 30;
+    </script>
+
     <style>
+        :root {
+            --gold: #D4AF37;
+            --gold-light: #F3E5AB;
+            --gold-dark: #8A5A19;
+            --text: #DCDCDC;
+            --muted: #8892b0;
+            --muted-2: #596585;
+            --green: #55e06f;
+        }
+
+        * { box-sizing: border-box; }
+
         body, html {
             margin: 0;
             padding: 0;
             height: 100%;
             width: 100%;
-            background: #000000;
-            color: #fff;
+            background: #000;
+            color: var(--text);
             font-family: 'Montserrat', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden; 
+            overflow: hidden;
+            cursor: none;
         }
 
-        body::before {
-            content: '';
-            position: absolute;
-            top: 20px; bottom: 20px; left: 20px; right: 20px;
-            border: 1px solid rgba(212, 175, 55, 0.15);
-            border-radius: 15px;
-            pointer-events: none;
+        /* ---------- Scène (dérive lente anti-marquage) ---------- */
+        #stage {
+            position: fixed;
+            inset: 5vh 4vw;
+            display: grid;
+            grid-template-columns: 47fr 53fr;
+            grid-template-rows: auto 1fr;
+            grid-template-areas: "date date" "gauge info";
+            column-gap: 3vw;
+            transition: transform 40s ease-in-out, opacity 1.5s ease;
         }
+        #stage.fade { opacity: 0; }
 
-        .container {
-            width: 85%;
-            max-width: 1400px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
+        /* 4 dispositions qui tournent */
+        .layout-1 #stage, .layout-3 #stage {
+            grid-template-columns: 53fr 47fr;
+            grid-template-areas: "date date" "info gauge";
         }
+        .layout-0 .info, .layout-3 .info { align-self: start; }
+        .layout-1 .info, .layout-2 .info { align-self: end; }
+        .layout-0 .date, .layout-2 .date { justify-self: start; }
+        .layout-1 .date, .layout-3 .date { justify-self: end; }
 
+        /* ---------- Date ---------- */
         .date {
+            grid-area: date;
             font-family: 'Amiri', serif;
-            font-size: 3vw;
-            color: #D4AF37; 
-            margin-bottom: 4vh;
+            font-size: 2.4vw;
+            color: var(--gold);
             text-transform: capitalize;
-            text-shadow: 0 2px 10px rgba(212, 175, 55, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 1vw;
+            margin-bottom: 2vh;
+        }
+        .date svg { width: 1.6vw; height: 1.6vw; }
+
+        /* ---------- Jauge mosquée ---------- */
+        .gauge {
+            grid-area: gauge;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+        }
+        .gauge > svg.mosque {
+            width: 100%;
+            height: 100%;
+            max-height: 82vh;
+            position: relative;
+            z-index: 2;
+            overflow: visible;
         }
 
+        /* rosace géométrique très discrète qui tourne en fond */
+        .rosette {
+            position: absolute;
+            width: 95vh;
+            height: 95vh;
+            left: 50%;
+            top: 50%;
+            margin: -47.5vh 0 0 -47.5vh;
+            opacity: 0.09;
+            z-index: 1;
+            animation: spin 240s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .outline { fill: none; stroke: var(--gold); stroke-opacity: 0.45; stroke-width: 2; }
+        .hole { fill: #000; stroke: var(--gold); stroke-opacity: 0.35; stroke-width: 1.5; }
+
+        .wave { animation: wave 6s linear infinite; }
+        .wave2 { animation: wave 9s linear infinite reverse; opacity: 0.45; }
+        @keyframes wave { from { transform: translateX(0); } to { transform: translateX(-200px); } }
+
+        .bubble {
+            fill: var(--gold-light);
+            opacity: 0;
+            transform-box: fill-box;
+            animation: rise 7s ease-in infinite;
+        }
+        @keyframes rise {
+            0%   { transform: translateY(0); opacity: 0; }
+            15%  { opacity: 0.8; }
+            100% { transform: translateY(-260px); opacity: 0; }
+        }
+
+        .lvl-line { stroke: rgba(255,255,255,0.28); stroke-width: 1.5; stroke-dasharray: 6 6; }
+        .lvl-text { fill: rgba(255,255,255,0.6); font: 700 22px 'Montserrat', sans-serif; }
+
+        #line70 { stroke: var(--gold); stroke-width: 3; stroke-dasharray: none; animation: pulse-line 2s ease-in-out infinite; }
+        #text70 { fill: #fff; font-size: 28px; }
+        #label70 {
+            fill: var(--gold-light);
+            font: 800 14px 'Montserrat', sans-serif;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            animation: pulse-text 2s ease-in-out infinite;
+        }
+        @keyframes pulse-line { 50% { stroke: var(--gold-light); stroke-width: 4.5; } }
+        @keyframes pulse-text { 50% { opacity: 0.55; } }
+
+        #pctText { font: 800 50px 'Montserrat', sans-serif; letter-spacing: 1px; }
+
+        /* ---------- Bloc infos ---------- */
+        .info {
+            grid-area: info;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 6vh 0 4vh;
+        }
+        .layout-1 .info, .layout-3 .info { align-items: flex-end; text-align: right; }
+
+        /* cadre du texte (comme l'ancienne version) */
         .metric {
-            margin-bottom: 7vh; /* Légèrement augmenté pour laisser de la place au texte au-dessus de la barre */
-            text-align: center;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: inherit;
             background: rgba(255, 255, 255, 0.02);
             padding: 40px;
             border-radius: 20px;
             border: 1px solid rgba(212, 175, 55, 0.1);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            width: 100%;
         }
 
         .label {
             font-family: 'Amiri', serif;
-            font-size: 2.2vw;
-            color: #E0E0E0;
-            margin-bottom: 10px;
+            font-size: 2.8vw;
+            color: var(--text);
+            line-height: 1.2;
         }
 
+        .ornament {
+            display: flex;
+            align-items: center;
+            gap: 1vw;
+            width: 60%;
+            margin: 1.5vh 0 0.5vh;
+        }
+        .layout-1 .ornament, .layout-3 .ornament { flex-direction: row-reverse; }
+        .ornament::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(212,175,55,0.6), rgba(212,175,55,0));
+        }
+        .layout-1 .ornament::after, .layout-3 .ornament::after {
+            background: linear-gradient(270deg, rgba(212,175,55,0.6), rgba(212,175,55,0));
+        }
+        .ornament svg { width: 2vw; height: 2vw; animation: spin 30s linear infinite; }
+
         #montantRecu {
-            font-size: 7vw;
             font-weight: 800;
-            color: #D4AF37;
-            text-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
-            letter-spacing: 2px;
+            font-size: 8.6vw;
+            line-height: 1.05;
+            letter-spacing: 0.2vw;
+            white-space: nowrap;
+            background: linear-gradient(100deg,
+                var(--gold) 0%, var(--gold) 38%, #FFF6D5 50%, var(--gold) 62%, var(--gold) 100%);
+            background-size: 300% 100%;
+            background-position: 100% 0;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: shimmer 14s ease-in-out infinite;
+            filter: drop-shadow(0 0 2.2vw rgba(212,175,55,0.25));
+        }
+        #montantRecu .cur { font-size: 0.4em; letter-spacing: 0.1vw; margin-left: 0.6vw; }
+        @keyframes shimmer {
+            0%, 70% { background-position: 100% 0; }
+            100%    { background-position: 0% 0; }
         }
 
         #objectif {
-            font-size: 1.8vw;
-            color: #8892b0;
-            margin-top: 15px;
-            font-weight: 400;
+            font-size: 1.9vw;
+            color: var(--muted);
+            margin-top: 1.5vh;
         }
+        .highlight-frais { font-size: 1.4vw; color: var(--muted-2); }
 
-        .highlight-frais {
-            font-size: 1.4vw;
-            color: #596585;
-        }
-
-        #progressBar {
+        /* mini-barre fine de rappel */
+        .rail {
             width: 100%;
-            height: 7vh;
-            background-color: rgba(255, 255, 255, 0.05);
-            border: 2px solid #D4AF37;
-            border-radius: 50px;
-            /* overflow: hidden; retiré pour permettre au texte de dépasser au-dessus */
+            height: 0.9vh;
+            margin: 4vh 0 1vh;
+            border-radius: 1vh;
+            background: rgba(255,255,255,0.06);
             position: relative;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(212, 175, 55, 0.15);
-            margin-bottom: 2vh;
         }
-
-        #progressFill {
+        .rail-fill {
             height: 100%;
-            width: 0%; 
-            background: linear-gradient(90deg, #8A5A19 0%, #D4AF37 50%, #F3E5AB 100%);
-            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
-            transition: width 2s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex;
-            align-items: center;
-            justify-content: flex-end; 
-            padding-right: 20px;
-            box-sizing: border-box;
-            position: relative;
-            border-radius: 50px; /* Arrondi ajouté ici pour épouser le conteneur */
-            z-index: 1;
+            width: 0;
+            border-radius: 1vh;
+            background: linear-gradient(90deg, var(--gold-dark), var(--gold), var(--gold-light));
+            transition: width 3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
-
-        #progressText {
-            font-size: 2.5vw;
-            font-weight: 700;
-            color: #000; 
-            text-shadow: 0 1px 2px rgba(255,255,255,0.5);
-        }
-
-        /* Styles pour les repères */
-        .marker {
+        .rail-tick {
             position: absolute;
-            top: 0;
-            bottom: 0;
-            border-left: 1px dashed rgba(255, 255, 255, 0.3);
-            z-index: 5;
-            pointer-events: none;
+            top: -0.8vh;
+            bottom: -0.8vh;
+            width: 2px;
+            background: rgba(255,255,255,0.3);
         }
+        .rail-tick.t70 { background: var(--gold); width: 3px; }
 
-        .marker-percent {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            left: 8px;
-            font-size: 1.2vw;
-            color: rgba(255, 255, 255, 0.7);
-            font-weight: 700;
-            text-shadow: 1px 1px 3px #000;
-        }
-
-        /* --- STYLE SPÉCIFIQUE POUR L'OBJECTIF CIBLE (70%) --- */
-        #marker70 {
-            left: 70%;
-            border-left: 3px solid #D4AF37; 
-            z-index: 6; 
-            box-shadow: 0 0 15px rgba(212, 175, 55, 0.7); 
-            animation: target-pulse 2s infinite; 
-        }
-
-        #marker70 .marker-percent {
-            color: #FFF;
-            font-size: 1.4vw;
-            text-shadow: 0 0 10px rgba(212, 175, 55, 1), 1px 1px 2px #000;
-        }
-
-        .marker-label {
-            position: absolute;
-            top: -4.5vh; /* Déplace le texte au-dessus de la barre */
-            left: -3vw; /* Ajuste la position horizontale */
-            font-size: 1.3vw;
-            color: #F3E5AB;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 800;
-            text-shadow: 2px 2px 5px #000, 0 0 10px rgba(212, 175, 55, 0.5);
-            transform: rotate(-12deg); /* Inclinaison du texte */
-            white-space: nowrap; /* Empêche le texte de passer à la ligne */
-        }
-
-        /* --- BLOC MOTIVATION SOUS LA BARRE --- */
         #motivationTarget {
-            font-size: 2vw;
-            color: #E0E0E0;
-            background: rgba(212, 175, 55, 0.08);
-            padding: 15px 40px;
-            border-radius: 30px;
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            gap: 15px;
+            margin-top: 3vh;
+            font-size: 1.75vw;
+            color: var(--text);
+            background: rgba(212, 175, 55, 0.07);
+            padding: 1.6vh 2.4vw;
+            border-radius: 5vh;
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            display: inline-block;
+            line-height: 1.35;
+            text-wrap: balance;
+            max-width: 100%;
             font-weight: 500;
+            animation: breathe 4s ease-in-out infinite;
         }
-
         #motivationTarget strong {
-            color: #F3E5AB; 
-            font-size: 2.2vw;
+            color: var(--gold-light);
+            font-size: 2.05vw;
             font-weight: 800;
-            text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+        @keyframes breathe {
+            50% { border-color: rgba(243, 229, 171, 0.75); box-shadow: 0 0 2.5vw rgba(212,175,55,0.18); }
+        }
+        #motivationTarget.done {
+            background: rgba(85, 224, 111, 0.1);
+            border-color: rgba(85, 224, 111, 0.4);
+            animation: none;
         }
 
-        /* Keyframes pour l'animation de pulsation de la cible */
-        @keyframes target-pulse {
-            0% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.6); border-left-color: #8A5A19; }
-            50% { box-shadow: 0 0 25px rgba(212, 175, 55, 1); border-left-color: #F3E5AB; }
-            100% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.6); border-left-color: #8A5A19; }
-        }
-
+        /* ---------- QR code (se déplace avec la disposition) ---------- */
         #qrcode {
-            position: fixed;
-            bottom: 30px;
-            left: 30px;
-            background: #fff;
-            padding: 10px;
+            position: absolute;
+            display: none;
+            background: #eee;
+            padding: 8px;
             border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            border: 2px solid #D4AF37;
+            border: 2px solid var(--gold);
         }
+        #qrcode.on { display: block; }
+        #qrcode img { width: 100px; height: 100px; display: block; }
+        .layout-0 #qrcode { right: 0; bottom: 0; }
+        .layout-1 #qrcode { left: 0; top: 0; }
+        .layout-2 #qrcode { right: 0; top: 0; }
+        .layout-3 #qrcode { left: 0; bottom: 0; }
 
-        #qrcode img {
-            width: 100px;
-            height: 100px;
-            display: block;
+        /* ---------- Veille de nuit ---------- */
+        #veille {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: none;
+            z-index: 100;
         }
+        #veille span {
+            position: absolute;
+            font: 700 2vw 'Montserrat', sans-serif;
+            color: rgba(212,175,55,0.35);
+            transition: left 50s linear, top 50s linear;
+        }
+        body.night #veille { display: block; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
-<body>
-    <div class="container">
-        <div class="date" id="currentDate"></div>
-        
-        <div class="metric">
+<body class="layout-0">
+    <div id="stage">
+
+        <div class="date">
+            <svg viewBox="-50 -50 100 100" aria-hidden="true"><path fill="#D4AF37" d="M0-48 12-29 34-34 29-12 48 0 29 12 34 34 12 29 0 48-12 29-34 34-29 12-48 0-29-12-34-34-12-29Z"/></svg>
+            <span id="currentDate"></span>
+        </div>
+
+        <div class="gauge">
+            <!-- rosace décorative -->
+            <svg class="rosette" viewBox="-100 -100 200 200" aria-hidden="true">
+                <g fill="none" stroke="#D4AF37" stroke-width="0.6">
+                    <circle r="98"/><circle r="70"/><circle r="40"/>
+                    <rect x="-69" y="-69" width="138" height="138"/>
+                    <rect x="-69" y="-69" width="138" height="138" transform="rotate(45)"/>
+                    <rect x="-49" y="-49" width="98" height="98" transform="rotate(22.5)"/>
+                    <rect x="-49" y="-49" width="98" height="98" transform="rotate(67.5)"/>
+                    <rect x="-28" y="-28" width="56" height="56"/>
+                    <rect x="-28" y="-28" width="56" height="56" transform="rotate(45)"/>
+                </g>
+            </svg>
+
+            <svg class="mosque" viewBox="0 60 600 460" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                    <!-- silhouette de la mosquée -->
+                    <clipPath id="mosqueClip">
+                        <!-- minaret gauche -->
+                        <rect x="22" y="200" width="30" height="300"/>
+                        <rect x="15" y="190" width="44" height="12" rx="2"/>
+                        <rect x="27" y="140" width="20" height="52"/>
+                        <path d="M24 142 L37 92 L50 142 Z"/>
+                        <!-- minaret droit -->
+                        <rect x="348" y="200" width="30" height="300"/>
+                        <rect x="341" y="190" width="44" height="12" rx="2"/>
+                        <rect x="353" y="140" width="20" height="52"/>
+                        <path d="M350 142 L363 92 L376 142 Z"/>
+                        <!-- corps, tambour, coupole -->
+                        <rect x="70" y="330" width="260" height="170"/>
+                        <rect x="120" y="298" width="160" height="34"/>
+                        <path d="M116 300 C 96 248, 140 206, 184 182 Q 200 172 200 150 Q 200 172 216 182 C 260 206, 304 248, 284 300 Z"/>
+                        <rect x="198" y="122" width="4" height="30"/>
+                        <path d="M207 100 A 11 11 0 1 0 207 116 A 8.5 8.5 0 1 1 207 100 Z"/>
+                    </clipPath>
+                    <clipPath id="levelClip"><rect id="levelRect" x="0" y="500" width="400" height="0"/></clipPath>
+                    <linearGradient id="goldV" x1="0" y1="1" x2="0" y2="0">
+                        <stop offset="0" stop-color="#8A5A19"/>
+                        <stop offset="0.55" stop-color="#D4AF37"/>
+                        <stop offset="1" stop-color="#F3E5AB"/>
+                    </linearGradient>
+                </defs>
+
+                <!-- remplissage or (niveau = pourcentage) -->
+                <g clip-path="url(#mosqueClip)">
+                    <g id="liquid" transform="translate(0,500)">
+                        <rect x="0" y="6" width="400" height="520" fill="url(#goldV)"/>
+                        <path class="wave2" fill="#D4AF37" d="M0 8 q50 -14 100 0 t100 0 t100 0 t100 0 t100 0 t100 0 V40 H0 Z"/>
+                        <path class="wave" fill="#F3E5AB" d="M0 8 q50 -12 100 0 t100 0 t100 0 t100 0 t100 0 t100 0 V20 H0 Z"/>
+                    </g>
+                    <g clip-path="url(#levelClip)">
+                        <circle class="bubble" cx="150" cy="495" r="3" style="animation-delay:0s"/>
+                        <circle class="bubble" cx="230" cy="495" r="2" style="animation-delay:1.3s"/>
+                        <circle class="bubble" cx="110" cy="495" r="2.5" style="animation-delay:2.6s"/>
+                        <circle class="bubble" cx="275" cy="495" r="3" style="animation-delay:3.4s"/>
+                        <circle class="bubble" cx="190" cy="495" r="2" style="animation-delay:4.7s"/>
+                        <circle class="bubble" cx="37" cy="495" r="2" style="animation-delay:2s"/>
+                        <circle class="bubble" cx="363" cy="495" r="2" style="animation-delay:5.5s"/>
+                    </g>
+                </g>
+
+                <!-- contours -->
+                <g class="outline">
+                    <rect x="22" y="200" width="30" height="300"/>
+                    <rect x="15" y="190" width="44" height="12" rx="2"/>
+                    <rect x="27" y="140" width="20" height="52"/>
+                    <path d="M24 142 L37 92 L50 142 Z"/>
+                    <rect x="348" y="200" width="30" height="300"/>
+                    <rect x="341" y="190" width="44" height="12" rx="2"/>
+                    <rect x="353" y="140" width="20" height="52"/>
+                    <path d="M350 142 L363 92 L376 142 Z"/>
+                    <rect x="70" y="330" width="260" height="170"/>
+                    <rect x="120" y="298" width="160" height="34"/>
+                    <path d="M116 300 C 96 248, 140 206, 184 182 Q 200 172 200 150 Q 200 172 216 182 C 260 206, 304 248, 284 300 Z"/>
+                    <line x1="200" y1="122" x2="200" y2="150"/>
+                    <path d="M207 100 A 11 11 0 1 0 207 116 A 8.5 8.5 0 1 1 207 100 Z"/>
+                    <line x1="0" y1="500" x2="400" y2="500"/>
+                </g>
+                <!-- porte et fenêtres -->
+                <path class="hole" d="M182 500 V468 A18 18 0 0 1 218 468 V500 Z"/>
+                <path class="hole" d="M98 372 V358 A10 10 0 0 1 118 358 V372 Z"/>
+                <path class="hole" d="M282 372 V358 A10 10 0 0 1 302 358 V372 Z"/>
+                <path class="hole" d="M32 260 V248 A5 5 0 0 1 42 248 V260 Z"/>
+                <path class="hole" d="M358 260 V248 A5 5 0 0 1 368 248 V260 Z"/>
+
+                <!-- pourcentage dans le bâtiment -->
+                <text id="pctText" x="200" y="432" text-anchor="middle" fill="#000">0%</text>
+
+                <!-- paliers 70 / 80 / 90 % -->
+                <line class="lvl-line" x1="0" y1="180" x2="400" y2="180"/>
+                <text class="lvl-text" x="412" y="188">80%</text>
+                <line class="lvl-line" x1="0" y1="140" x2="400" y2="140"/>
+                <text class="lvl-text" x="412" y="148">90%</text>
+                <line class="lvl-line" id="line70" x1="0" y1="220" x2="400" y2="220"/>
+                <text class="lvl-text" id="text70" x="412" y="230">70%</text>
+                <text id="label70" x="412" y="252">Prochain Objectif !</text>
+            </svg>
+        </div>
+
+        <div class="info">
+            <div class="metric">
             <div class="label">Al Hamdulillah, nous avons récolté :</div>
-            <div id="montantRecu">0 CHF</div>
+            <div class="ornament">
+                <svg viewBox="-50 -50 100 100" aria-hidden="true"><path fill="#D4AF37" d="M0-48 12-29 34-34 29-12 48 0 29 12 34 34 12 29 0 48-12 29-34 34-29 12-48 0-29-12-34-34-12-29Z"/><circle r="10" fill="#000"/></svg>
+            </div>
+            <div id="montantRecu"><span id="montantChiffre">0</span><span class="cur">CHF</span></div>
             <div id="objectif">Objectif Final : 740'000 CHF <span class="highlight-frais">(+ frais ~60k)</span></div>
-        </div>
-
-        <div id="progressBar">
-            <div id="progressFill">
-                <span id="progressText">0%</span>
             </div>
-            
-            <div id="marker70" class="marker">
-                <span class="marker-label">Prochain Objectif !</span>
-                <span class="marker-percent">70%</span>
+
+            <div class="rail">
+                <div class="rail-fill" id="railFill"></div>
+                <div class="rail-tick t70" style="left:70%"></div>
+                <div class="rail-tick" style="left:80%"></div>
+                <div class="rail-tick" style="left:90%"></div>
             </div>
-            
-            <div class="marker" style="left: 80%;"><span class="marker-percent">80%</span></div>
-            <div class="marker" style="left: 90%;"><span class="marker-percent">90%</span></div>
+
+            <div id="motivationTarget">
+                🚀 Encore <strong id="manquantTarget">-- CHF</strong> pour atteindre le palier des 70% !
+            </div>
         </div>
 
-        <div id="motivationTarget">
-            🚀 Encore <strong id="manquantTarget">-- CHF</strong> pour atteindre le palier des 70% !
-        </div>
-
+        <div id="qrcode"></div>
     </div>
-    <div id="qrcode"></div>
+
+    <div id="veille"><span id="veilleTxt"></span></div>
 
     <script>
         const montantTotal = 740000;
         const palierCible70 = montantTotal * 0.70; // 518'000 CHF
-        
-        // Fonction pour formater les montants en format suisse
+
         function formatMontantSuisse(montant) {
-            return montant.toLocaleString('fr-CH').replace(/\s/g, "'");
+            return Math.round(montant).toLocaleString('fr-CH').replace(/\s/g, "'");
         }
-        
+
         const pourcentage = (montantRecu / montantTotal) * 100;
+        const pct = Math.min(pourcentage, 100);
+        const params = new URLSearchParams(window.location.search);
 
-        // Insertion du montant avec la devise
-        document.getElementById('montantRecu').textContent = `${formatMontantSuisse(montantRecu)} CHF`;
-
-        // Calcul du montant manquant pour le palier de 70%
+        /* ---------- Textes ---------- */
         const panelMotivation = document.getElementById('motivationTarget');
         if (montantRecu < palierCible70) {
-            const manquant70 = palierCible70 - montantRecu;
-            document.getElementById('manquantTarget').textContent = `${formatMontantSuisse(Math.round(manquant70))} CHF`;
+            document.getElementById('manquantTarget').textContent = `${formatMontantSuisse(palierCible70 - montantRecu)} CHF`;
         } else {
-            // Si 70% est atteint
             panelMotivation.innerHTML = "🎉 <strong>Objectif 70% Atteint !</strong> Al Hamdulillah. Continuons l'effort !";
-            panelMotivation.style.background = "rgba(85, 224, 111, 0.1)"; 
-            panelMotivation.style.border = "1px solid rgba(85, 224, 111, 0.4)";
-            document.getElementById('marker70').style.animation = "none";
-            document.getElementById('marker70').style.borderLeftColor = "#55e06f"; 
-            document.querySelector('.marker-label').style.color = "#55e06f"; 
-            document.querySelector('.marker-label').textContent = "Objectif Atteint !";
+            panelMotivation.classList.add('done');
+            const l70 = document.getElementById('line70');
+            l70.style.animation = 'none';
+            l70.style.stroke = '#55e06f';
+            const lab = document.getElementById('label70');
+            lab.style.animation = 'none';
+            lab.style.fill = '#55e06f';
+            lab.textContent = 'Objectif Atteint !';
         }
 
-        const progressFill = document.getElementById('progressFill');
-        const progressText = document.getElementById('progressText');
-        
-        const pourcentageAffichage = pourcentage > 100 ? 100 : pourcentage;
-        progressText.textContent = `${pourcentageAffichage.toFixed(1)}%`;
+        document.getElementById('veilleTxt').textContent = `${formatMontantSuisse(montantRecu)} CHF`;
 
-        // Animation douce de la barre de progression
-        setTimeout(() => {
-            progressFill.style.width = `${pourcentageAffichage}%`;
-            if (pourcentage < 8) {
-                progressFill.style.justifyContent = 'flex-start';
-                progressFill.style.paddingLeft = '20px';
+        /* ---------- Jauge : 0 % = y 500, 100 % = y 100 ---------- */
+        const liquid = document.getElementById('liquid');
+        const levelRect = document.getElementById('levelRect');
+        const pctText = document.getElementById('pctText');
+        const chiffre = document.getElementById('montantChiffre');
+        const railFill = document.getElementById('railFill');
+
+        function setLevel(p) {
+            const y = 500 - p * 4;
+            liquid.setAttribute('transform', `translate(0,${y})`);
+            levelRect.setAttribute('y', y);
+            levelRect.setAttribute('height', 500 - y);
+            pctText.setAttribute('fill', y < 400 ? '#000' : '#D4AF37');
+        }
+
+        // animation de "remplissage" + compteur qui monte
+        function remplir(depuis) {
+            const duree = 3500;
+            const t0 = performance.now();
+            const ease = t => 1 - Math.pow(1 - t, 3);
+            railFill.style.width = `${pct}%`;
+            function frame(now) {
+                const t = Math.min((now - t0) / duree, 1);
+                const k = depuis + (1 - depuis) * ease(t);
+                setLevel(pct * k);
+                chiffre.textContent = formatMontantSuisse(montantRecu * k);
+                pctText.textContent = `${(pct * k).toFixed(1)}%`;
+                if (t < 1) requestAnimationFrame(frame);
             }
-        }, 300);
+            requestAnimationFrame(frame);
+        }
+        setLevel(0);
+        setTimeout(() => remplir(0), 400);
+        // rejoue le remplissage toutes les 5 minutes pour attirer le regard
+        setInterval(() => remplir(0.15), 5 * 60 * 1000);
 
-        // Affichage de la date du jour
-        const currentDate = new Date();
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('currentDate').textContent = currentDate.toLocaleDateString('fr-FR', options);
-        
-        // QR code logic
-        function getQueryParam(param) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.has(param);
+        /* ---------- Date ---------- */
+        function majDate() {
+            document.getElementById('currentDate').textContent =
+                new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        majDate();
+        setInterval(majDate, 60 * 1000);
+
+        /* ---------- Anti-marquage : rotation des dispositions ---------- */
+        const stage = document.getElementById('stage');
+        let layoutActuel = -1;
+
+        function layoutPourMaintenant() {
+            if (params.has('layout')) return (parseInt(params.get('layout'), 10) || 0) % 4;
+            const periode = params.has('demo') ? 8000 : ROTATION_HEURES * 3600 * 1000;
+            return Math.floor(Date.now() / periode) % 4;
         }
 
-        if (getQueryParam('displayQrCode')) {
+        function appliquerLayout(force) {
+            const l = layoutPourMaintenant();
+            if (l === layoutActuel && !force) return;
+            const premier = layoutActuel === -1;
+            layoutActuel = l;
+            if (premier) { document.body.className = `layout-${l}`; return; }
+            stage.classList.add('fade');
+            setTimeout(() => {
+                document.body.className = `layout-${l}`;
+                stage.classList.remove('fade');
+                remplir(0.15);
+            }, 1600);
+        }
+        appliquerLayout();
+        setInterval(appliquerLayout, params.has('demo') ? 1000 : 30 * 1000);
+
+        // micro-dérive permanente de toute la scène (quelques pixels, très lente)
+        function deriver() {
+            const t = Date.now() / 60000;
+            const dx = Math.sin(t * 0.7) * 1.2;   // en vw
+            const dy = Math.cos(t * 0.53) * 1.2;  // en vh
+            stage.style.transform = `translate(${dx}vw, ${dy}vh)`;
+        }
+        deriver();
+        setInterval(deriver, 40 * 1000);
+
+        /* ---------- Veille de nuit (optionnelle) ---------- */
+        function estLaNuit() {
+            if (!VEILLE) return false;
+            const h = new Date().getHours();
+            return VEILLE.debut > VEILLE.fin
+                ? (h >= VEILLE.debut || h < VEILLE.fin)
+                : (h >= VEILLE.debut && h < VEILLE.fin);
+        }
+        function majVeille() {
+            document.body.classList.toggle('night', estLaNuit());
+            const s = document.getElementById('veilleTxt');
+            s.style.left = `${5 + Math.random() * 75}vw`;
+            s.style.top = `${5 + Math.random() * 85}vh`;
+        }
+        majVeille();
+        setInterval(majVeille, 60 * 1000);
+
+        /* ---------- Rechargement auto (nouveau montant) ---------- */
+        // ne recharge que si le site répond, pour ne jamais afficher une page d'erreur
+        setInterval(() => {
+            fetch(window.location.href, { cache: 'no-store' })
+                .then(r => { if (r.ok) window.location.reload(); })
+                .catch(() => {});
+        }, RECHARGE_MIN * 60 * 1000);
+
+        /* ---------- QR code ---------- */
+        if (params.has('displayQrCode') && typeof qrcode !== 'undefined') {
             const qr = qrcode(0, 'L');
             qr.addData('https://docs.google.com/forms/d/e/1FAIpQLSc7BlKx-n79_-pOm46anvRlnRTNFY37br7CZTgdKmvE-VHM3Q/viewform');
             qr.make();
-            document.getElementById('qrcode').innerHTML = qr.createImgTag(4);
+            const el = document.getElementById('qrcode');
+            el.innerHTML = qr.createImgTag(4);
+            el.classList.add('on');
         }
     </script>
 </body>
