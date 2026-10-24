@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <script>
-const montantRecu = 491475; // Montant reçu actuel
+const montantRecu = 491475; // Montant de secours (utilisé seulement si montant.txt est illisible)
 </script>
 <head>
     <meta charset="UTF-8">
@@ -15,14 +15,17 @@ const montantRecu = 491475; // Montant reçu actuel
                          (4 dispositions différentes, cycle complet = 4 × X heures)
        VEILLE          : écran quasi noir la nuit, ex. { debut: 23, fin: 4 }
                          (null = désactivé)
-       RECHARGE_MIN    : recharge la page toutes les X minutes pour afficher
-                         le nouveau montant après une mise à jour sur GitHub
+       LECTURE_MIN     : relit le fichier montant.txt toutes les X minutes
+                         (le montant se met à jour sans recharger la page)
+       RECHARGE_HEURES : recharge toute la page toutes les X heures
+                         (utile seulement si tu modifies le design)
        Tests : ?layout=0..3 force une disposition, ?demo fait défiler les 4,
                ?displayQrCode affiche le QR code (comme avant)
     ==================================================== */
     const ROTATION_HEURES = 2;
     const VEILLE = null;
-    const RECHARGE_MIN = 30;
+    const LECTURE_MIN = 5;
+    const RECHARGE_HEURES = 6;
     </script>
 
     <style>
@@ -463,36 +466,22 @@ const montantRecu = 491475; // Montant reçu actuel
             return Math.round(montant).toLocaleString('fr-CH').replace(/\s/g, "'");
         }
 
-        const pourcentage = (montantRecu / montantTotal) * 100;
-        const pct = Math.min(pourcentage, 100);
         const params = new URLSearchParams(window.location.search);
 
-        /* ---------- Textes ---------- */
         const panelMotivation = document.getElementById('motivationTarget');
-        if (montantRecu < palierCible70) {
-            document.getElementById('manquantTarget').textContent = `${formatMontantSuisse(palierCible70 - montantRecu)} CHF`;
-        } else {
-            panelMotivation.innerHTML = "🎉 <strong>Objectif 70% Atteint !</strong> Al Hamdulillah. Continuons l'effort !";
-            panelMotivation.classList.add('done');
-            const l70 = document.getElementById('line70');
-            l70.style.animation = 'none';
-            l70.style.stroke = '#55e06f';
-            const lab = document.getElementById('label70');
-            lab.style.animation = 'none';
-            lab.style.fill = '#55e06f';
-            lab.textContent = 'Objectif Atteint !';
-        }
-
-        document.getElementById('veilleTxt').textContent = `${formatMontantSuisse(montantRecu)} CHF`;
-
-        /* ---------- Jauge : 0 % = y 500, 100 % = y 100 ---------- */
+        const motivationInitiale = panelMotivation.innerHTML;
+        const line70 = document.getElementById('line70');
+        const label70 = document.getElementById('label70');
         const liquid = document.getElementById('liquid');
         const levelRect = document.getElementById('levelRect');
         const pctText = document.getElementById('pctText');
         const chiffre = document.getElementById('montantChiffre');
         const railFill = document.getElementById('railFill');
 
+        /* ---------- Jauge : 0 % = y 500, 100 % = y 100 ---------- */
+        let niveauActuel = 0;
         function setLevel(p) {
+            niveauActuel = p;
             const y = 500 - p * 4;
             liquid.setAttribute('transform', `translate(0,${y})`);
             levelRect.setAttribute('y', y);
@@ -500,26 +489,70 @@ const montantRecu = 491475; // Montant reçu actuel
             pctText.setAttribute('fill', y < 400 ? '#000' : '#D4AF37');
         }
 
-        // animation de "remplissage" + compteur qui monte
-        function remplir(depuis) {
-            const duree = 3500;
+        // fait monter (ou descendre) l'or lentement jusqu'au nouveau niveau
+        function animerNiveau(cible, duree) {
+            const depart = niveauActuel;
             const t0 = performance.now();
-            const ease = t => 1 - Math.pow(1 - t, 3);
-            railFill.style.width = `${pct}%`;
+            const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            railFill.style.transition = `width ${duree}ms ease-in-out`;
+            railFill.style.width = `${cible}%`;
             function frame(now) {
                 const t = Math.min((now - t0) / duree, 1);
-                const k = depuis + (1 - depuis) * ease(t);
-                setLevel(pct * k);
-                chiffre.textContent = formatMontantSuisse(montantRecu * k);
-                pctText.textContent = `${(pct * k).toFixed(1)}%`;
+                setLevel(depart + (cible - depart) * ease(t));
                 if (t < 1) requestAnimationFrame(frame);
             }
             requestAnimationFrame(frame);
         }
-        setLevel(0);
-        setTimeout(() => remplir(0), 400);
-        // rejoue le remplissage toutes les 5 minutes pour attirer le regard
-        setInterval(() => remplir(0.15), 5 * 60 * 1000);
+
+        /* ---------- Affichage d'un montant ---------- */
+        let montantAffiche = null;
+        function afficher(montant) {
+            if (montant === montantAffiche) return;
+            const premier = montantAffiche === null;
+            montantAffiche = montant;
+            const pct = Math.min((montant / montantTotal) * 100, 100);
+
+            chiffre.textContent = formatMontantSuisse(montant);
+            pctText.textContent = `${pct.toFixed(1)}%`;
+            document.getElementById('veilleTxt').textContent = `${formatMontantSuisse(montant)} CHF`;
+
+            if (montant < palierCible70) {
+                panelMotivation.innerHTML = motivationInitiale;
+                panelMotivation.classList.remove('done');
+                document.getElementById('manquantTarget').textContent = `${formatMontantSuisse(palierCible70 - montant)} CHF`;
+                line70.style.animation = ''; line70.style.stroke = '';
+                label70.style.animation = ''; label70.style.fill = '';
+                label70.textContent = 'Prochain Objectif !';
+            } else {
+                panelMotivation.innerHTML = "🎉 <strong>Objectif 70% Atteint !</strong> Al Hamdulillah. Continuons l'effort !";
+                panelMotivation.classList.add('done');
+                line70.style.animation = 'none'; line70.style.stroke = '#55e06f';
+                label70.style.animation = 'none'; label70.style.fill = '#55e06f';
+                label70.textContent = 'Objectif Atteint !';
+            }
+
+            if (premier) {
+                setLevel(0);
+                setTimeout(() => animerNiveau(pct, 6000), 800);   // remplissage lent au démarrage
+            } else {
+                animerNiveau(pct, 4000);                          // nouveau montant : l'or monte doucement
+            }
+        }
+
+        /* ---------- Lecture de montant.txt ---------- */
+        // le fichier contient juste le montant, ex. 491475 (491'475 est accepté aussi)
+        function lireMontant() {
+            return fetch(`montant.txt?t=${Date.now()}`, { cache: 'no-store' })
+                .then(r => r.ok ? r.text() : Promise.reject())
+                .then(txt => {
+                    const n = parseInt(txt.replace(/[^0-9]/g, ''), 10);
+                    if (Number.isFinite(n) && n > 0) afficher(n);
+                    else if (montantAffiche === null) afficher(montantRecu);
+                })
+                .catch(() => { if (montantAffiche === null) afficher(montantRecu); });
+        }
+        lireMontant();
+        setInterval(lireMontant, LECTURE_MIN * 60 * 1000);
 
         /* ---------- Date ---------- */
         function majDate() {
@@ -549,7 +582,6 @@ const montantRecu = 491475; // Montant reçu actuel
             setTimeout(() => {
                 document.body.className = `layout-${l}`;
                 stage.classList.remove('fade');
-                remplir(0.15);
             }, 1600);
         }
         appliquerLayout();
@@ -582,13 +614,13 @@ const montantRecu = 491475; // Montant reçu actuel
         majVeille();
         setInterval(majVeille, 60 * 1000);
 
-        /* ---------- Rechargement auto (nouveau montant) ---------- */
+        /* ---------- Rechargement complet (si le design change) ---------- */
         // ne recharge que si le site répond, pour ne jamais afficher une page d'erreur
         setInterval(() => {
             fetch(window.location.href, { cache: 'no-store' })
                 .then(r => { if (r.ok) window.location.reload(); })
                 .catch(() => {});
-        }, RECHARGE_MIN * 60 * 1000);
+        }, RECHARGE_HEURES * 3600 * 1000);
 
         /* ---------- QR code ---------- */
         if (params.has('displayQrCode') && typeof qrcode !== 'undefined') {
